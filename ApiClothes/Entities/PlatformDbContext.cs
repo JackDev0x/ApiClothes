@@ -6,11 +6,11 @@ namespace ApiClothes.Entities
     public class PlatformDbContext : DbContext
     {
         private readonly IConfiguration _configuration;
-        DbSet<Announcement> Announcements { get; set; }
-        DbSet<User> Users { get; set; }
-        DbSet<Comment> Comments { get; set; }
-        DbSet<AnnouncementImages> AnnouncementImages { get; set; }
-        DbSet<FavoriteAnnouncements> FavoriteAnnouncements { get;set; }
+        public DbSet<Announcement> Announcements { get; set; }
+        public DbSet<User> Users { get; set; }
+        public DbSet<Comment> Comments { get; set; }
+        public DbSet<AnnouncementImages> AnnouncementImages { get; set; }
+        public DbSet<FavoriteAnnouncements> FavoriteAnnouncements { get;set; }
 
         public PlatformDbContext(DbContextOptions<PlatformDbContext> options, IConfiguration configuration) : base(options)
         {
