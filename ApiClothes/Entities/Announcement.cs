@@ -8,8 +8,13 @@ namespace ApiClothes.Entities
         [Key]
         public int AnId { get; set; }
         public string Slug { get; set; }
+        public bool isActive  { get; set; }
+        public string Brand { get; set; }
+        public string Model { get; set; }
         public int UserId { get; set; }
         public int Years { get; set; }
+        public decimal? OriginalPrice { get; set; }
+        public string Category { get; set; }
         public decimal Price { get; set; }
         public string Description { get; set; }
         public string City { get; set; }

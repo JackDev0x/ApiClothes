@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Google.Cloud.Storage.V1;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Mvc;
+using ApiClothes.DtoModels;
 
 namespace ApiClothes.Services.Services
 {
@@ -22,7 +23,96 @@ namespace ApiClothes.Services.Services
             _mapper = mapper;
             _configuration = configuration;
         }
+        public async Task<(bool IsSuccess, string Message)> AddToFavAnn(string userId, int id)
+        {
+            var announcement = await _dbContext.Announcements
+                .Where(a => a.AnId == id)
+                .FirstOrDefaultAsync();
 
+            if (announcement == null)
+            {
+                return (false, "Announcement does not exist.");
+            }
+
+            var existingFavorite = await _dbContext.FavoriteAnnouncements
+                .Where(fa => fa.UserId == int.Parse(userId) && fa.FavoriteAnnouncementId == id)
+                .FirstOrDefaultAsync();
+
+            if (existingFavorite != null)
+            {
+                return (false, "This announcement is already in your favorites.");
+            }
+
+            var newFavorite = new FavoriteAnnouncements
+            {
+                UserId = int.Parse(userId),
+                FavoriteAnnouncementId = id,
+                AnnouncementAnId = id
+
+            };
+
+            _dbContext.FavoriteAnnouncements.Add(newFavorite);
+            await _dbContext.SaveChangesAsync();
+
+            return (true, "Announcement added to favorites successfully.");
+        }
+        public async Task<Comment> CreateCom(CommentCreateRequest commentCreateRequest, string usr)
+        {
+            var comment = new Comment()
+            {
+                UserId = int.Parse(usr),
+                AnId = commentCreateRequest.AnId,
+                CommentText = commentCreateRequest.CommentText
+            };
+
+            _dbContext.Comments.Add(comment);
+            await _dbContext.SaveChangesAsync();
+
+
+            return comment;
+        }
+        public async Task<bool> DeleteAnnFromFavorites(int AnnId, int userId)
+        {
+
+            var fvann = await _dbContext.FavoriteAnnouncements
+                                        .FirstOrDefaultAsync(f => f.AnnouncementAnId == AnnId && f.UserId == userId);
+
+            if (fvann == null)
+            {
+                throw new ArgumentException("The specified announcement was not found in the user's favorites.");
+            }
+
+            _dbContext.FavoriteAnnouncements.Remove(fvann);
+            await _dbContext.SaveChangesAsync();
+
+            return true;
+
+        }
+        public async Task<bool> DeleteCom(int commentId, int userId)
+        {
+            var comment = await _dbContext.Comments.FindAsync(commentId);
+
+            if (comment == null || comment.UserId != userId)
+            {
+                return false;
+            }
+
+            _dbContext.Comments.Remove(comment);
+            await _dbContext.SaveChangesAsync();
+
+            return true;
+        }
+        public async Task<List<FavoriteAnnouncementsDto>> GetFvAnnsByUsrId(int id)
+        {
+            var com = await _dbContext.FavoriteAnnouncements.Where(f => f.UserId == id).AsQueryable().AsNoTracking()
+                .ToListAsync();
+
+            if (com == null) return null;
+
+            var comDto = _mapper.Map<List<FavoriteAnnouncementsDto>>(com);
+
+            return comDto;
+        }
         public async Task<Announcement> CreateAnn(AnnouncementCreateRequest request, string usr)
         {
             // Pobierz konfigurację Google Cloud Storage z DI
@@ -39,8 +129,11 @@ namespace ApiClothes.Services.Services
             var announcement = new Announcement
             {
                 Slug = slug,
+                isActive = true,
                 UserId = int.Parse(usr),
                 Price = request.Price,
+                OriginalPrice = request.OriginalPrice,
+                Category = request.Category,
                 Description = request.Description,
                 City = user.City,
                 Summary = title,
@@ -142,6 +235,7 @@ namespace ApiClothes.Services.Services
             }
 
             // Usuń powiązane dane z bazy danych
+
             _dbContext.Comments.RemoveRange(announcement.Comments);
             _dbContext.AnnouncementImages.RemoveRange(announcement.Images);
             _dbContext.FavoriteAnnouncements.RemoveRange(announcement.FavoriteAnnouncements);
@@ -177,6 +271,7 @@ namespace ApiClothes.Services.Services
 
             return true;
         }
+        
 
         public async Task<string> GenerateUniqueSlugAsync(string brand, string model, int suffixLength = 8)
         {

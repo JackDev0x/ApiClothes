@@ -24,6 +24,7 @@ using static System.Net.WebRequestMethods;
 //using Braintree.Exceptions;
 using Microsoft.Extensions.Logging;
 using ApiClothes.Entities;
+using Newtonsoft.Json;
 
 namespace AutomovieApi.Controllers
 {
@@ -97,9 +98,26 @@ namespace AutomovieApi.Controllers
         //}
 
         [HttpPost("register")]
-        [Consumes("application/json")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest RegisterRequest)
         {
+            _logger.LogInformation("--------------------------------------");
+            _logger.LogInformation("--------------------------------------");
+            _logger.LogInformation("--------------------------------------");
+            _logger.LogInformation("--------------------------------------");
+            _logger.LogInformation("Received register request: {RegisterRequest}", JsonConvert.SerializeObject(RegisterRequest));
+            _logger.LogInformation("--------------------------------------");
+            _logger.LogInformation("--------------------------------------");
+            _logger.LogInformation("--------------------------------------");
+            _logger.LogInformation("--------------------------------------");
+            if (!ModelState.IsValid)
+            {
+                foreach (var error in ModelState.Values.SelectMany(v => v.Errors))
+                {
+                    _logger.LogError("Model validation error: " + error.ErrorMessage);
+                }
+                return BadRequest(ModelState);
+            }
+
             var fieldState = ModelState.GetFieldValidationState("Email");
             if (fieldState == ModelValidationState.Invalid)
             {
@@ -113,12 +131,20 @@ namespace AutomovieApi.Controllers
                 {
                     return BadRequest("Email already in use.");
                 }
+                if (!ModelState.IsValid)
+                {
+                    foreach (var error in ModelState.Values.SelectMany(v => v.Errors))
+                    {
+                        _logger.LogError("Model validation error: " + error.ErrorMessage);
+                    }
+                    return BadRequest(ModelState);
+                }
+
 
                 double _lan = 0;
                 double _lng = 0;
 
-
-
+                // Zmiana: Asynchroniczna operacja bez blokowania wątku
                 if (!string.IsNullOrEmpty(RegisterRequest.City))
                 {
                     string adresUrl = "https://nominatim.openstreetmap.org/";
@@ -128,9 +154,7 @@ namespace AutomovieApi.Controllers
                     var req = new RestRequest("search?city=" + RegisterRequest.City + "&country=Poland&format=geojson");
 
                     req.RequestFormat = DataFormat.Json;
-                    Task<RestResponse> t = client.ExecuteGetAsync(req);
-                    t.Wait();
-                    var response = t.Result as RestResponse;
+                    var response = await client.ExecuteGetAsync(req); // Zmiana na await
 
                     if (response.IsSuccessful)
                     {
@@ -155,9 +179,7 @@ namespace AutomovieApi.Controllers
                     }
                 }
 
-
-
-
+                // Utworzenie użytkownika
                 var user = new User
                 {
                     Name = RegisterRequest.Name,
@@ -171,26 +193,28 @@ namespace AutomovieApi.Controllers
                     PasswordHash = _passwordHasher.HashPassword(null, RegisterRequest.Password)
                 };
 
+                // Dodanie użytkownika do bazy
                 _dbContext.Users.Add(user);
                 await _dbContext.SaveChangesAsync();
 
-
-
+                // Zwrócenie sukcesu
                 return Ok("User registered successfully.");
             }
             catch (HttpRequestException httpEx)
             {
-                return StatusCode(500, httpEx.Message);
+                // Logowanie błędu HttpRequestException
+                _logger.LogError("HttpRequestException: {Message}", httpEx.Message);
+                return StatusCode(500, "Wystąpił problem z zewnętrzną usługą (np. Nominatim).");
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                ex.Message);
+                _logger.LogError(ex, "Exception occurred while registering user.");
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
 
+
         [HttpPost("login")]
-        [Consumes("application/json")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Email == request.Email);

@@ -9,13 +9,19 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Google.Cloud.Storage.V1;
 using Microsoft.Extensions.Options;
+using Serilog;
+using Microsoft.Extensions.Logging;
+
 
 
 
 var builder = WebApplication.CreateBuilder(args);
-
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()  // Logowanie tak¿e do konsoli
+    .WriteTo.File("logs/myapp.txt", rollingInterval: RollingInterval.Day)  // Logowanie do pliku
+    .CreateLogger();
 // Add services to the container.
-
+builder.Host.UseSerilog();
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -32,10 +38,19 @@ builder.Services.AddDbContext<PlatformDbContext>(options =>
                 maxRetryCount: 5,
                 maxRetryDelay: TimeSpan.FromSeconds(30),
                 errorNumbersToAdd: null);
-        }));
+        }).EnableSensitiveDataLogging());
 builder.Services.AddScoped<IProductCatalog, ProductCatalog>();
 builder.Services.AddScoped<IAccountManager, AccountManager>();
-
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        // Umo¿liwia dostêp z dowolnej domeny
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()   // Umo¿liwia wszystkie metody (GET, POST, PUT, DELETE, itd.)
+              .AllowAnyHeader();  // Umo¿liwia wszystkie nag³ówki
+    });
+});
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -49,16 +64,7 @@ builder.Services.Configure<GoogleCloudStorageConfig>(
 var credentialPath = builder.Configuration.GetSection("GoogleCloudStorage")["CredentialPath"];
 Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", credentialPath);
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy(name: "AllowAll",
-                      policy =>
-                      {
-                          policy.AllowAnyOrigin()
-                                .AllowAnyMethod()
-                                .AllowAnyHeader();
-                      });
-});
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -81,6 +87,7 @@ builder.Services.AddAuthentication(options =>
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -89,7 +96,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+app.UseCors("AllowAll");  // U¿ywamy wczeœniej zdefiniowanej polityki CORS
 
+app.UseRouting();
 app.UseHttpsRedirection();
 
 app.UseAuthorization();

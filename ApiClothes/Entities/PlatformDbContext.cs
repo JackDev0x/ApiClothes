@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using static Grpc.Core.Metadata;
 
 namespace ApiClothes.Entities
 {
@@ -20,6 +21,15 @@ namespace ApiClothes.Entities
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<Announcement>(entity =>
+            {
+                entity.Property(e => e.Price)
+                    .HasPrecision(18, 2); // Precyzja 18, skala 2
+
+                entity.Property(e => e.OriginalPrice)
+                    .HasPrecision(18, 2); // Precyzja 18, skala 2
+            });
 
             modelBuilder.Entity<Announcement>(entity =>
             {

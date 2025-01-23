@@ -1,5 +1,6 @@
 ﻿using ApiClothes.Entities;
 using ApiClothes.DtoModels;
+using ApiClothes.RequestsModels;
 
 namespace ApiClothes.Services.Interfaces
 {
@@ -11,11 +12,7 @@ namespace ApiClothes.Services.Interfaces
         Task<UserDto> GetUsrById(int id);
         Task<List<CommentDto>> GetCommentsByAnnId(int id);
         Task<List<AnnouncementDto>> GetAnnsByUsrId(int id);
-        //Task<List<FavoriteAnnouncementsDto>> GetFvAnnsByUsrId(int id);
-        //Task<Announcement> CreateAnn(AnnouncementCreateRequest request, string usr);
-        //Task<Comment> CreateCom(CommentCreateRequest request, string usr);
-        //Task<bool> DeleteCom(int commentId, int userId);
-        //Task<bool> DeleteAnnouncementAsync(int announcementId, int userId);
-        //Task<bool> DeleteAnnFromFavorites(int annId, int userId);
+        Task<PagedResult<AnnouncementDto>> GetAnnouncementsAsync(PaginationParameters paginationParameters);
+
     }
 }

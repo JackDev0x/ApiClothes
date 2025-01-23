@@ -41,7 +41,37 @@ namespace ApiClothes.Controllers
                 ex.Message);
             }
         }
+        [Authorize]
+        [HttpPost("AddAnnToFavorites")]
+        public async Task<IActionResult> AddAnnToFavorites([FromQuery] int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+            var (isSuccess, message) = await _accountManager.AddToFavAnn(userId, id);
+
+            if (isSuccess)
+            {
+                return Ok(message);
+            }
+
+            return BadRequest(message);
+        }
+        [Authorize]
+        [HttpDelete("DeleteAnnFromFavorites/{AnnId}")]
+        public async Task<IActionResult> DeleteAnnFromFavorites(int AnnId)
+        {
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+
+            var result = await _accountManager.DeleteAnnFromFavorites(AnnId, userId);
+
+            if (!result)
+            {
+                return NotFound(new { Message = "Announcement not found or user not authorized." });
+            }
+
+            return Ok(new { Message = "Announcement deleted successfully from your favorites." });
+        }
         [Authorize]
         [HttpDelete("DeleteAnnouncement/{AnnId}")]
         public async Task<IActionResult> DeleteAnnouncement(int AnnId)

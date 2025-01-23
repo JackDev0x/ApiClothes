@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace ApiClothes.RequestsModels
 {
@@ -10,11 +11,12 @@ namespace ApiClothes.RequestsModels
         public string Phone { get; set; }
         [Required]
         [EmailAddress]
+        [JsonPropertyName("email")]
         public string Email { get; set; }
         [Required]
         public string Password { get; set; }
         public string City { get; set; }
-        public bool IsCompany { get; set; }
+        //public bool IsCompany { get; set; }
         public string Voivodeship { get; set; }
     }
 }
