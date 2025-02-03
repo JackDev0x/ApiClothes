@@ -7,6 +7,7 @@ namespace ApiClothes.Entities
     {
         [Key]
         public int UserId { get; set; }
+        public string Role { get; set; } = "User"; // Domyślnie zwykły użytkownik
         [Required(ErrorMessage = "Proszę podać imię")]
         public string Name { get; set; }
 

@@ -102,6 +102,18 @@ namespace ApiClothes.Services.Services
             throw new NotImplementedException();
         }
 
+        public async Task<List<UserDto>> GetUsers()
+        {
+            var users = await _dbContext.Users
+                .ToListAsync();
+
+            if (users == null) return null;
+
+            var usersDto = _mapper.Map<List<UserDto>>(users);
+
+            return usersDto;
+        }
+
         public async Task<List<CommentDto>> GetCommentsByAnnId(int id)
         {
             var com = await _dbContext.Comments.Where(f => f.AnId == id).Include(a => a.User).AsQueryable().AsNoTracking()
@@ -113,64 +125,19 @@ namespace ApiClothes.Services.Services
 
             return comDto;
         }
-        public async Task<List<AnnPreview>> GetAnnsByUsrId(int id)
-        {
-            var anns = await _dbContext.Announcements
-                .Include(a => a.FavoriteAnnouncements)
-                .Include(a => a.User)
-                .Include(a => a.Images)
-                .Where(f => f.UserId == id).AsQueryable().AsNoTracking()
-                .ToListAsync();
+        
 
-            if (anns == null) return null;
+        //public async Task<List<FavoriteAnnouncementsDto>> GetFvAnnsByUsrId(int id)
+        //{
+        //    var com = await _dbContext.FavoriteAnnouncements.Where(f => f.UserId == id).AsQueryable().AsNoTracking()
+        //        .ToListAsync();
 
-            var projectedResults = anns.Select(a => new AnnPreview
-            {
-                Id = a.AnId,
-                Slug = a.Slug,
-                Brand = a.Brand,
-                Model = a.Model,
-                Description = a.Description,
-                summary = a.Summary,
-                User = new UserDto
-                {
-                    UserId = a.User.UserId,
-                    Name = a.User.Name,
-                    Surname = a.User.Surname,
-                    Phone = a.User.Phone,
-                    Email = a.User.Email,
-                    lat = a.User.lat,
-                    lng = a.User.lng,
-                    Voivodeship = a.User.Voivodeship,
-                    City = a.User.City,
-                },
-                Price = a.Price,
-                ProductionYear = a.Years,
-                LikedBy = _dbContext.FavoriteAnnouncements
-                            .Where(fa => fa.AnnouncementAnId == a.AnId)
-                            .Select(fa => fa.UserId)
-                            .ToList(),
-                Images = a.Images.Select(i => new AnnouncementImagesDto
-                {
-                    AnId = i.AnId,
-                    ImageUrl = i.ImageUrl
-                }).ToList()
-            }).ToList();
+        //    if (com == null) return null;
 
-            return projectedResults;
-        }
+        //    var comDto = _mapper.Map<List<FavoriteAnnouncementsDto>>(com);
 
-        public async Task<List<FavoriteAnnouncementsDto>> GetFvAnnsByUsrId(int id)
-        {
-            var com = await _dbContext.FavoriteAnnouncements.Where(f => f.UserId == id).AsQueryable().AsNoTracking()
-                .ToListAsync();
-
-            if (com == null) return null;
-
-            var comDto = _mapper.Map<List<FavoriteAnnouncementsDto>>(com);
-
-            return comDto;
-        }
+        //    return comDto;
+        //}
 
 
         public async Task<Comment> CreateCom(CommentCreateRequest commentCreateRequest, string usr)
@@ -221,11 +188,21 @@ namespace ApiClothes.Services.Services
             return true;
 
         }
-        
 
-        Task<List<AnnouncementDto>> IProductCatalog.GetAnnsByUsrId(int id)
+
+        public async Task<List<AnnouncementDto>> GetAnnsByUsrId(int id)
         {
-            throw new NotImplementedException();
+            var anns = await _dbContext.Announcements
+                .Include(a => a.Images)
+                .Where(f => f.UserId == id).AsQueryable().AsNoTracking()
+                .ToListAsync();
+
+            if (anns == null) return null;
+
+            var comDto = _mapper.Map<List<AnnouncementDto>>(anns);
+
+            return comDto;
+
         }
     }
 }

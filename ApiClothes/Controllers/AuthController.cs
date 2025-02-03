@@ -238,18 +238,18 @@ namespace AutomovieApi.Controllers
 
         private string GenerateToken(User user)
         {
-            var claims = new[]
-            {
-            new Claim(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-        };
+            var claims = new List<Claim>
+    {
+        new Claim(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
+        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+        new Claim(ClaimTypes.Role, user.Role) // Dodajemy rolę użytkownika
+    };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var tokenLifetimeMinutes = _configuration.GetValue<int>("Jwt:TokenLifetimeMinutes");
-            var expiration = DateTime.Now.AddMinutes(tokenLifetimeMinutes);
-
+            var expiration = DateTime.UtcNow.AddMinutes(tokenLifetimeMinutes);
 
             var token = new JwtSecurityToken(
                 issuer: _configuration["Jwt:Issuer"],
@@ -260,6 +260,7 @@ namespace AutomovieApi.Controllers
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
+
 
         public class PaymentRequest
         {

@@ -35,7 +35,7 @@ namespace ApiClothes.Services.Services
             }
 
             var existingFavorite = await _dbContext.FavoriteAnnouncements
-                .Where(fa => fa.UserId == int.Parse(userId) && fa.FavoriteAnnouncementId == id)
+                .Where(fa => fa.UserId == int.Parse(userId) && fa.AnnouncementAnId == id)
                 .FirstOrDefaultAsync();
 
             if (existingFavorite != null)
@@ -46,7 +46,7 @@ namespace ApiClothes.Services.Services
             var newFavorite = new FavoriteAnnouncements
             {
                 UserId = int.Parse(userId),
-                FavoriteAnnouncementId = id,
+                //FavoriteAnnouncementId = id,
                 AnnouncementAnId = id
 
             };
@@ -102,14 +102,22 @@ namespace ApiClothes.Services.Services
 
             return true;
         }
-        public async Task<List<FavoriteAnnouncementsDto>> GetFvAnnsByUsrId(int id)
+        public async Task<List<AnnouncementDto>> GetFvAnnsByUsrId(int id)
         {
-            var com = await _dbContext.FavoriteAnnouncements.Where(f => f.UserId == id).AsQueryable().AsNoTracking()
+            var announcementIds = await _dbContext.FavoriteAnnouncements
+    .Where(f => f.UserId == id)
+    .Select(f => f.AnnouncementAnId) // Pobranie tylko potrzebnych ID ogłoszeń
+    .ToListAsync();
+
+            var favoriteAnnouncements = await _dbContext.Announcements
+                .Where(a => announcementIds.Contains(a.AnId)) // Filtrowanie po pobranych ID
+                .Include(a => a.Images) // Załadowanie powiązanych obrazów
+                .AsNoTracking()
                 .ToListAsync();
 
-            if (com == null) return null;
+            if (favoriteAnnouncements == null) return null;
 
-            var comDto = _mapper.Map<List<FavoriteAnnouncementsDto>>(com);
+            var comDto = _mapper.Map<List<AnnouncementDto>>(favoriteAnnouncements);
 
             return comDto;
         }
@@ -128,7 +136,9 @@ namespace ApiClothes.Services.Services
 
             var announcement = new Announcement
             {
-                Slug = slug,
+                Brand = request.Brand,
+                Model = request.Model,
+                Slug = slug,   
                 isActive = true,
                 UserId = int.Parse(usr),
                 Price = request.Price,
@@ -136,6 +146,7 @@ namespace ApiClothes.Services.Services
                 Category = request.Category,
                 Description = request.Description,
                 City = user.City,
+                Years = request.Years,
                 Summary = title,
                 lat = user.lat,
                 lng = user.lng,
@@ -152,6 +163,10 @@ namespace ApiClothes.Services.Services
             {
                 if (file.Length > 0)
                 {
+                    if (!IsValidImage(file))
+                    {
+                        throw new Exception("Invalid file type. Only image files are allowed.");
+                    }
                     imageCount++;
 
                     var fileName = $"{imageCount}-{announcement.Slug}{Path.GetExtension(file.FileName)}";
@@ -220,6 +235,20 @@ namespace ApiClothes.Services.Services
 
         //    return true;
         //}
+
+        private static readonly List<string> AllowedMimeTypes = new()
+{
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp"
+};
+
+        private bool IsValidImage(IFormFile file)
+        {
+            return AllowedMimeTypes.Contains(file.ContentType.ToLower());
+        }
+
         public async Task<bool> DeleteAnnouncementAsync(int announcementId, int userId)
         {
             // Znajdź ogłoszenie w bazie danych
@@ -271,6 +300,8 @@ namespace ApiClothes.Services.Services
 
             return true;
         }
+
+
         
 
         public async Task<string> GenerateUniqueSlugAsync(string brand, string model, int suffixLength = 8)

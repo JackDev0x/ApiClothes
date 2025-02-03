@@ -10,8 +10,9 @@ namespace ApiClothes.Services.Interfaces
         Task<AnnouncementDto> GetById(int id);
         Task<AnnouncementDto> GetBySlug(string slug);
         Task<UserDto> GetUsrById(int id);
+        public Task<List<UserDto>> GetUsers();
         Task<List<CommentDto>> GetCommentsByAnnId(int id);
-        Task<List<AnnouncementDto>> GetAnnsByUsrId(int id);
+        public Task<List<AnnouncementDto>> GetAnnsByUsrId(int id);
         Task<PagedResult<AnnouncementDto>> GetAnnouncementsAsync(PaginationParameters paginationParameters);
 
     }

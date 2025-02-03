@@ -57,8 +57,8 @@ namespace ApiClothes.Controllers
             return BadRequest(message);
         }
         [Authorize]
-        [HttpDelete("DeleteAnnFromFavorites/{AnnId}")]
-        public async Task<IActionResult> DeleteAnnFromFavorites(int AnnId)
+        [HttpDelete("DeleteAnnFromFavorites")]
+        public async Task<IActionResult> DeleteAnnFromFavorites([FromQuery] int AnnId)
         {
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
