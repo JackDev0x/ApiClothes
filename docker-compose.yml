@@ -1,18 +1,16 @@
-version: '3.4'
-
 services:
+
   api:
     build:
       context: ./ApiClothes  # Ścieżka do folderu z aplikacją (ApiClothes)
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_URLS=http://+:80;
+      - ASPNETCORE_URLS=http://+:80
       - Jwt__Key=VeryVeryLongSecretKeyWithAtLeast32Characters
       - Jwt__Issuer=YourIssuer
       - Jwt__Audience=YourAudience
       - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=YourDatabaseName;User Id=sa;Password=yourStrong(!)Password;TrustServerCertificate=True;
-      - GOOGLE_APPLICATION_CREDENTIALS=/app/big-data.json
-      - GoogleCloudStorage__BucketName=blobstorageclothes
+      - AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
     ports:
       - "8080:80"
     depends_on:
@@ -30,6 +28,20 @@ services:
       - sqlserver_data:/var/opt/mssql
       - ./big-data-2024-02-js-d40bd755fd6e.json:/app/big-data-2024-02-js-d40bd755fd6e.json:ro
     restart: always
+    
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    container_name: azurite
+    ports:
+      - "10000:10000"    # Blob service
+    volumes:
+      - azurite_data:/data
+    command: >
+      azurite-blob
+      --blobHost 0.0.0.0
+      --location /data
+    restart: always
 
 volumes:
   sqlserver_data:
+  azurite_data:  # Dodajemy wolumen azurite_data

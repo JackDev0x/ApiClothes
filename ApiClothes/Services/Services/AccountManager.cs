@@ -7,6 +7,7 @@ using Google.Cloud.Storage.V1;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Mvc;
 using ApiClothes.DtoModels;
+using Azure.Storage.Blobs;
 
 namespace ApiClothes.Services.Services
 {
@@ -15,6 +16,8 @@ namespace ApiClothes.Services.Services
         private readonly PlatformDbContext _dbContext;
         private readonly IMapper _mapper;
         private readonly IConfiguration _configuration;
+        private readonly BlobServiceClient _blobServiceClient;
+        private readonly string _containerName;
 
 
         public AccountManager(PlatformDbContext dbContext, IMapper mapper, IConfiguration configuration)
@@ -22,6 +25,12 @@ namespace ApiClothes.Services.Services
             _dbContext = dbContext;
             _mapper = mapper;
             _configuration = configuration;
+
+            var connectionString = _configuration.GetValue<string>("AZURE_STORAGE_CONNECTION_STRING");
+            _blobServiceClient = new BlobServiceClient(connectionString);
+
+            // Pobierz nazwę kontenera z konfiguracji
+            _containerName = _configuration.GetSection("BlobStorage")["ContainerName"];
         }
         public async Task<(bool IsSuccess, string Message)> AddToFavAnn(string userId, int id)
         {
@@ -123,10 +132,6 @@ namespace ApiClothes.Services.Services
         }
         public async Task<Announcement> CreateAnn(AnnouncementCreateRequest request, string usr)
         {
-            // Pobierz konfigurację Google Cloud Storage z DI
-            //var storageClient = StorageClient.Create();
-            //var bucketName = _configuration.GetSection("GoogleCloudStorage")["BucketName"];
-
             var slug = await GenerateUniqueSlugAsync(request.Brand, request.Model);
 
             string title = string.IsNullOrWhiteSpace(request.summary) ? " " : request.summary;
@@ -138,7 +143,7 @@ namespace ApiClothes.Services.Services
             {
                 Brand = request.Brand,
                 Model = request.Model,
-                Slug = slug,   
+                Slug = slug,
                 isActive = true,
                 UserId = int.Parse(usr),
                 Price = request.Price,
@@ -151,48 +156,51 @@ namespace ApiClothes.Services.Services
                 lat = user.lat,
                 lng = user.lng,
                 Comments = new List<Comment>(),
-                //Images = new List<AnnouncementImages>()
+                Images = new List<AnnouncementImages>()
             };
 
             _dbContext.Announcements.Add(announcement);
             await _dbContext.SaveChangesAsync();
 
-            //int imageCount = 0;
+            int imageCount = 0;
 
-            //foreach (var file in request.Images)
-            //{
-            //    if (file.Length > 0)
-            //    {
-            //        if (!IsValidImage(file))
-            //        {
-            //            throw new Exception("Invalid file type. Only image files are allowed.");
-            //        }
-            //        imageCount++;
+            foreach (var file in request.Images)
+            {
+                if (file.Length > 0)
+                {
+                    if (!IsValidImage(file))
+                    {
+                        throw new Exception("Invalid file type. Only image files are allowed.");
+                    }
+                    imageCount++;
 
-            //        var fileName = $"{imageCount}-{announcement.Slug}{Path.GetExtension(file.FileName)}";
+                    var fileName = $"{imageCount}-{announcement.Slug}{Path.GetExtension(file.FileName)}";
 
-            //        using (var stream = file.OpenReadStream())
-            //        {
-            //            // Prześlij plik do Google Cloud Storage
-            //            await storageClient.UploadObjectAsync(
-            //                bucketName,
-            //                fileName,
-            //                file.ContentType,
-            //                stream);
-            //        }
+                    // Tworzymy kontener (jeśli nie istnieje)
+                    var blobContainerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
+                    await blobContainerClient.CreateIfNotExistsAsync();
 
-            //        var imageUrl = $"https://storage.googleapis.com/{bucketName}/{fileName}";
+                    // Utwórz obiekt BlobClient
+                    var blobClient = blobContainerClient.GetBlobClient(fileName);
 
-            //        var image = new AnnouncementImages
-            //        {
-            //            AnId = announcement.AnId,
-            //            ImageUrl = imageUrl
-            //        };
+                    using (var stream = file.OpenReadStream())
+                    {
+                        // Prześlij plik do Azurite
+                        await blobClient.UploadAsync(stream);
+                    }
 
-            //        _dbContext.AnnouncementImages.Add(image);
-            //        announcement.Images.Add(image);
-            //    }
-            //}
+                    var imageUrl = $"http://localhost:10000/{_containerName}/{fileName}"; // Azurite URL
+
+                    var image = new AnnouncementImages
+                    {
+                        AnId = announcement.AnId,
+                        ImageUrl = imageUrl
+                    };
+
+                    _dbContext.AnnouncementImages.Add(image);
+                    announcement.Images.Add(image);
+                }
+            }
 
             await _dbContext.SaveChangesAsync();
             return announcement;
@@ -264,35 +272,34 @@ namespace ApiClothes.Services.Services
             }
 
             // Usuń powiązane dane z bazy danych
-
             _dbContext.Comments.RemoveRange(announcement.Comments);
             _dbContext.AnnouncementImages.RemoveRange(announcement.Images);
             _dbContext.FavoriteAnnouncements.RemoveRange(announcement.FavoriteAnnouncements);
 
-            // Inicjalizacja klienta Google Cloud Storage
-            //var storageClient = await StorageClient.CreateAsync();
-            //var bucketName = _configuration.GetSection("GoogleCloudStorage:BucketName").Value;
+            // Tworzymy klienta kontenera
+            var blobContainerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
 
-            //// Usuwanie obrazów z Google Cloud Storage
-            //foreach (var image in announcement.Images)
-            //{
-            //    // Wyciągnij nazwę obiektu (blob) z URL obrazu
-            //    var blobName = new Uri(image.ImageUrl).Segments.LastOrDefault();
-            //    if (!string.IsNullOrEmpty(blobName))
-            //    {
-            //        try
-            //        {
-            //            await storageClient.DeleteObjectAsync(bucketName, blobName);
-            //        }
-            //        catch (Google.GoogleApiException ex) when (ex.Error.Code == 404)
-            //        {
-            //            // Ignoruj, jeśli obiekt już nie istnieje
-            //            Console.WriteLine($"Blob {blobName} not found, skipping.");
-            //        }
-            //    }
-            //}
+            // Usuwanie obrazów z Azurite
+            foreach (var image in announcement.Images)
+            {
+                // Wyciągnij nazwę obiektu (blob) z URL obrazu
+                var blobName = new Uri(image.ImageUrl).Segments.LastOrDefault();
+                if (!string.IsNullOrEmpty(blobName))
+                {
+                    try
+                    {
+                        var blobClient = blobContainerClient.GetBlobClient(blobName);
+                        await blobClient.DeleteIfExistsAsync();  // Usuwamy blob z Azurite
+                    }
+                    catch (Exception ex)
+                    {
+                        // Można dodać logowanie w przypadku błędu
+                        Console.WriteLine($"Error deleting blob {blobName}: {ex.Message}");
+                    }
+                }
+            }
 
-            // Usuń ogłoszenie
+            // Usuń ogłoszenie z bazy danych
             _dbContext.Announcements.Remove(announcement);
 
             // Zapisz zmiany w bazie danych
@@ -302,7 +309,7 @@ namespace ApiClothes.Services.Services
         }
 
 
-        
+
 
         public async Task<string> GenerateUniqueSlugAsync(string brand, string model, int suffixLength = 8)
         {

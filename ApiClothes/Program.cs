@@ -26,14 +26,31 @@ builder.Services.AddControllers()
 builder.Services.AddAutoMapper(typeof(AutomovieMappingProfile));
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
-builder.Services.Configure<GoogleCloudStorageConfig>(
-    builder.Configuration.GetSection("GoogleCloudStorage"));
-
-var credentialPath = builder.Configuration.GetSection("GoogleCloudStorage")["CredentialPath"];
-if (!string.IsNullOrEmpty(credentialPath))
+builder.Services.Configure<BlobStorageConfig>(options =>
 {
-    Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", credentialPath);
-}
+    var configSection = builder.Configuration.GetSection("BlobStorage");
+    configSection.Bind(options);
+
+    // Jeœli istnieje zmienna œrodowiskowa AZURE_STORAGE_CONNECTION_STRING, to j¹ u¿yj
+    var envConnectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING");
+    if (!string.IsNullOrEmpty(envConnectionString))
+    {
+        options.ConnectionString = envConnectionString;
+    }
+});
+
+// Dodaj serwis do obs³ugi blob storage
+builder.Services.AddSingleton<BlobStorageService>();
+
+
+//builder.Services.Configure<GoogleCloudStorageConfig>(
+//    builder.Configuration.GetSection("GoogleCloudStorage"));
+
+//var credentialPath = builder.Configuration.GetSection("GoogleCloudStorage")["CredentialPath"];
+//if (!string.IsNullOrEmpty(credentialPath))
+//{
+//    Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", credentialPath);
+//}
 
 builder.Services.AddDbContext<PlatformDbContext>(options =>
 {
@@ -48,15 +65,14 @@ builder.Services.AddScoped<IProductCatalog, ProductCatalog>();
 builder.Services.AddScoped<IAccountManager, AccountManager>();
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontendOnly", policy =>
-    {
+   
         options.AddPolicy("AllowAll", policy =>
         {
             policy.AllowAnyOrigin()   // zezwala na ka¿dy nag³ówek Origin
                   .AllowAnyMethod()   // GET, POST, PUT, DELETE itd.
                   .AllowAnyHeader();  // ka¿dy nag³ówek
         });
-    });
+    
 });
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -91,7 +107,7 @@ using (var scope = app.Services.CreateScope())
 
 app.UseExceptionHandler("/error");  
 
-app.UseCors("AllowFrontendOnly");
+app.UseCors("AllowAll");
 
 //app.UseHttpsRedirection();
 
