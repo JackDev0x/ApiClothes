@@ -124,8 +124,8 @@ namespace ApiClothes.Services.Services
         public async Task<Announcement> CreateAnn(AnnouncementCreateRequest request, string usr)
         {
             // Pobierz konfigurację Google Cloud Storage z DI
-            var storageClient = StorageClient.Create();
-            var bucketName = _configuration.GetSection("GoogleCloudStorage")["BucketName"];
+            //var storageClient = StorageClient.Create();
+            //var bucketName = _configuration.GetSection("GoogleCloudStorage")["BucketName"];
 
             var slug = await GenerateUniqueSlugAsync(request.Brand, request.Model);
 
@@ -151,48 +151,48 @@ namespace ApiClothes.Services.Services
                 lat = user.lat,
                 lng = user.lng,
                 Comments = new List<Comment>(),
-                Images = new List<AnnouncementImages>()
+                //Images = new List<AnnouncementImages>()
             };
 
             _dbContext.Announcements.Add(announcement);
             await _dbContext.SaveChangesAsync();
 
-            int imageCount = 0;
+            //int imageCount = 0;
 
-            foreach (var file in request.Images)
-            {
-                if (file.Length > 0)
-                {
-                    if (!IsValidImage(file))
-                    {
-                        throw new Exception("Invalid file type. Only image files are allowed.");
-                    }
-                    imageCount++;
+            //foreach (var file in request.Images)
+            //{
+            //    if (file.Length > 0)
+            //    {
+            //        if (!IsValidImage(file))
+            //        {
+            //            throw new Exception("Invalid file type. Only image files are allowed.");
+            //        }
+            //        imageCount++;
 
-                    var fileName = $"{imageCount}-{announcement.Slug}{Path.GetExtension(file.FileName)}";
+            //        var fileName = $"{imageCount}-{announcement.Slug}{Path.GetExtension(file.FileName)}";
 
-                    using (var stream = file.OpenReadStream())
-                    {
-                        // Prześlij plik do Google Cloud Storage
-                        await storageClient.UploadObjectAsync(
-                            bucketName,
-                            fileName,
-                            file.ContentType,
-                            stream);
-                    }
+            //        using (var stream = file.OpenReadStream())
+            //        {
+            //            // Prześlij plik do Google Cloud Storage
+            //            await storageClient.UploadObjectAsync(
+            //                bucketName,
+            //                fileName,
+            //                file.ContentType,
+            //                stream);
+            //        }
 
-                    var imageUrl = $"https://storage.googleapis.com/{bucketName}/{fileName}";
+            //        var imageUrl = $"https://storage.googleapis.com/{bucketName}/{fileName}";
 
-                    var image = new AnnouncementImages
-                    {
-                        AnId = announcement.AnId,
-                        ImageUrl = imageUrl
-                    };
+            //        var image = new AnnouncementImages
+            //        {
+            //            AnId = announcement.AnId,
+            //            ImageUrl = imageUrl
+            //        };
 
-                    _dbContext.AnnouncementImages.Add(image);
-                    announcement.Images.Add(image);
-                }
-            }
+            //        _dbContext.AnnouncementImages.Add(image);
+            //        announcement.Images.Add(image);
+            //    }
+            //}
 
             await _dbContext.SaveChangesAsync();
             return announcement;
@@ -270,27 +270,27 @@ namespace ApiClothes.Services.Services
             _dbContext.FavoriteAnnouncements.RemoveRange(announcement.FavoriteAnnouncements);
 
             // Inicjalizacja klienta Google Cloud Storage
-            var storageClient = await StorageClient.CreateAsync();
-            var bucketName = _configuration.GetSection("GoogleCloudStorage:BucketName").Value;
+            //var storageClient = await StorageClient.CreateAsync();
+            //var bucketName = _configuration.GetSection("GoogleCloudStorage:BucketName").Value;
 
-            // Usuwanie obrazów z Google Cloud Storage
-            foreach (var image in announcement.Images)
-            {
-                // Wyciągnij nazwę obiektu (blob) z URL obrazu
-                var blobName = new Uri(image.ImageUrl).Segments.LastOrDefault();
-                if (!string.IsNullOrEmpty(blobName))
-                {
-                    try
-                    {
-                        await storageClient.DeleteObjectAsync(bucketName, blobName);
-                    }
-                    catch (Google.GoogleApiException ex) when (ex.Error.Code == 404)
-                    {
-                        // Ignoruj, jeśli obiekt już nie istnieje
-                        Console.WriteLine($"Blob {blobName} not found, skipping.");
-                    }
-                }
-            }
+            //// Usuwanie obrazów z Google Cloud Storage
+            //foreach (var image in announcement.Images)
+            //{
+            //    // Wyciągnij nazwę obiektu (blob) z URL obrazu
+            //    var blobName = new Uri(image.ImageUrl).Segments.LastOrDefault();
+            //    if (!string.IsNullOrEmpty(blobName))
+            //    {
+            //        try
+            //        {
+            //            await storageClient.DeleteObjectAsync(bucketName, blobName);
+            //        }
+            //        catch (Google.GoogleApiException ex) when (ex.Error.Code == 404)
+            //        {
+            //            // Ignoruj, jeśli obiekt już nie istnieje
+            //            Console.WriteLine($"Blob {blobName} not found, skipping.");
+            //        }
+            //    }
+            //}
 
             // Usuń ogłoszenie
             _dbContext.Announcements.Remove(announcement);

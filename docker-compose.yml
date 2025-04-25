@@ -1,0 +1,35 @@
+version: '3.4'
+
+services:
+  api:
+    build:
+      context: ./ApiClothes  # Ścieżka do folderu z aplikacją (ApiClothes)
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80;
+      - Jwt__Key=VeryVeryLongSecretKeyWithAtLeast32Characters
+      - Jwt__Issuer=YourIssuer
+      - Jwt__Audience=YourAudience
+      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=YourDatabaseName;User Id=sa;Password=yourStrong(!)Password;TrustServerCertificate=True;
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/big-data.json
+      - GoogleCloudStorage__BucketName=blobstorageclothes
+    ports:
+      - "8080:80"
+    depends_on:
+      - sqlserver
+    restart: always
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=yourStrong(!)Password
+    ports:
+      - "1431:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+      - ./big-data-2024-02-js-d40bd755fd6e.json:/app/big-data-2024-02-js-d40bd755fd6e.json:ro
+    restart: always
+
+volumes:
+  sqlserver_data:
