@@ -6,6 +6,12 @@ Unlike the full production version, this prototype uses **local Azurite Blob Sto
 
 ---
 
+## Project Status
+
+⚠️ **Prototype status:** This project is in active development and testing. The local Azurite Blob Storage container is used to simulate Azure Blob Storage but image upload/download features are not fully functional yet.
+
+---
+
 ## Key Features
 
 - User registration and authentication with **JWT tokens**  
@@ -31,12 +37,6 @@ Unlike the full production version, this prototype uses **local Azurite Blob Sto
 - Dependency Injection  
 - AutoMapper  
 - Swagger  
-
----
-
-## Project Status
-
-⚠️ **Prototype status:** This project is in active development and testing. The local Azurite Blob Storage container is used to simulate Azure Blob Storage but image upload/download features are not fully functional yet.
 
 ---
 
